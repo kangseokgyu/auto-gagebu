@@ -1,7 +1,12 @@
 package main
 
-import "github.com/kangseokgyu/auto-gagebu/internal/pkg/wooricard"
+import (
+	"fmt"
+
+	"github.com/kangseokgyu/auto-gagebu/internal/pkg/wooricard"
+)
 
 func main() {
-	wooricard.GetMessages()
+	receipts := wooricard.GetReceipts()
+	fmt.Println(receipts)
 }
