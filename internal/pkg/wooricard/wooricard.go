@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -32,7 +33,10 @@ type Receipt struct {
 type message struct {
 	context string
 	sender  string
-	date    int
+	// iMessage date 형식
+	// '2001-01-01' 이후로 카운트한다.
+	// 나노초 단위로 카운트한다.
+	date int64
 }
 
 func GetMessages() []message {
@@ -79,16 +83,27 @@ func Fetch(msg message) (*Receipt, error) {
 	if len(s) == 0 {
 		return nil, errors.New("failed to match regex")
 	}
+
+	// 금액
 	amount, err := strconv.ParseUint(strings.ReplaceAll(s[1], ",", ""), 10, 64)
 	if err != nil {
 		return nil, errors.New("failed to parse amount")
+	}
+
+	// 연도
+	var year string
+	const input = "2001-01-01"
+	const layout = "2006-01-02"
+	if t, err := time.Parse(layout, input); err == nil {
+		ts := time.Unix(0, t.UnixNano()+msg.date)
+		year = strconv.Itoa(ts.Year())
 	}
 
 	return &Receipt{
 			title:            s[3],
 			user:             "kangseokgyu",
 			amount:           amount,
-			date:             s[2],
+			date:             year + "/" + s[2],
 			transaction_type: "지출",
 			payment_method:   "신용카드"},
 		nil
