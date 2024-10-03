@@ -30,11 +30,12 @@ type Receipt struct {
 }
 
 type message struct {
-	context []byte
+	context string
 	sender  string
+	date    int
 }
 
-func GetMessages() []string {
+func GetMessages() []message {
 	path := "/Users/kangseokgyu/Library/Messages/chat.db"
 
 	db, err := sql.Open("sqlite3", path)
@@ -43,36 +44,38 @@ func GetMessages() []string {
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT m.attributedBody, h.id AS id FROM message m INNER JOIN handle h ON m.handle_id = h.ROWID WHERE h.id = \"+8215889955\" ORDER BY m.date DESC")
+	rows, err := db.Query("SELECT m.attributedBody, h.id, m.date AS id FROM message m INNER JOIN handle h ON m.handle_id = h.ROWID WHERE h.id = \"+8215889955\" ORDER BY m.date DESC")
 	if err != nil {
 		panic(err)
 	}
 
-	var messages []string
+	var messages []message
 	for rows.Next() {
 		var msg message
-		err = rows.Scan(&msg.context, &msg.sender)
+		var body []byte
+		err = rows.Scan(&body, &msg.sender, &msg.date)
 		if err != nil {
 			panic(err)
 		}
-		msgs := strings.SplitAfter(string(msg.context), "NSNumber")[0]
-		msgs = strings.SplitAfter(msgs, "NSString")[1]
-		msgs = strings.Split(msgs, "NSDictionary")[0]
+		msg.context = strings.SplitAfter(string(body), "NSNumber")[0]
+		msg.context = strings.SplitAfter(msg.context, "NSString")[1]
+		msg.context = strings.Split(msg.context, "NSDictionary")[0]
+		msg.context = msg.context[6 : len(msg.context)-12]
 		// fmt.Println(msgs[6 : len(msgs)-12])
 		// fmt.Println()
-		messages = append(messages, msgs[6:len(msgs)-12])
+		messages = append(messages, msg)
 	}
 
 	return messages
 }
 
-func Fetch(msg string) (*Receipt, error) {
+func Fetch(msg message) (*Receipt, error) {
 	r, e := regexp.Compile(`.*\n.*\n([0-9,]*)원 .*\n([0-9]{1,2}\/[0-9]{1,2}).*\n.*\n(.*)`)
 	if e != nil {
 		return nil, errors.New("failed to compile regex")
 	}
 
-	s := r.FindStringSubmatch(msg)
+	s := r.FindStringSubmatch(msg.context)
 	if len(s) == 0 {
 		return nil, errors.New("failed to match regex")
 	}
